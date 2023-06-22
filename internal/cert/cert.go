@@ -30,13 +30,13 @@ func (m Metrics) Output() string {
 	if len(m.Tags) > 0 {
 		buf := bytes.Buffer{}
 		separator := ""
-		for tag, value := range m.Tags {
-			fmt.Fprintf(&buf, "%s%s=\"%s\"", separator, tag, value)
+		for _, value := range m.Tags {
+			fmt.Fprintf(&buf, "%s", value)
 			if separator == "" {
 				separator = ", "
 			}
 		}
-		tags = fmt.Sprintf("{%s}", buf.String())
+		tags = fmt.Sprintf(".%s", buf.String())
 	}
 	lines := []string{
 		"# HELP cert_days_left number of days until certificate expires. Expired certificates produce negative numbers.",
@@ -81,9 +81,9 @@ func CollectMetrics(ctx context.Context, path string, cfg Config) (Metrics, erro
 	if cfg.Influx {
 		//  InfluxDB does not support * and . in metrics
 		fixStar := strings.Replace(cert.Subject.CommonName, "*", "STAR", 1)
-		fixDot :=  strings.ReplaceAll(fixStar, ".", "_")
+		fixDot := strings.ReplaceAll(fixStar, ".", "_")
 		metrics.Tags = map[string]string{"subject": fixDot}
-	}else{
+	} else {
 		metrics.Tags = map[string]string{"subject": cert.Subject.CommonName}
 	}
 
