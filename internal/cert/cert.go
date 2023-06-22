@@ -79,8 +79,10 @@ func CollectMetrics(ctx context.Context, path string, cfg Config) (Metrics, erro
 	}
 
 	if cfg.Influx {
-		//  InfluxDB does not support * in metrics
-		metrics.Tags = map[string]string{"subject": strings.Replace(cert.Subject.CommonName, "*", "STAR", 1)}
+		//  InfluxDB does not support * and . in metrics
+		fixStar := strings.Replace(cert.Subject.CommonName, "*", "STAR", 1)
+		fixDot :=  strings.ReplaceAll(fixStar, ".", "_")
+		metrics.Tags = map[string]string{"subject": fixDot}
 	}else{
 		metrics.Tags = map[string]string{"subject": cert.Subject.CommonName}
 	}
