@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/sensu-community/sensu-plugin-sdk/sensu"
 	"github.com/sensu/cert-checks/internal/cert"
-	"github.com/sensu/sensu-go/types"
+	corev2 "github.com/sensu/core/v2"
+	"github.com/sensu/sensu-plugin-sdk/sensu"
 )
 
 // Config represents the check plugin config.
@@ -16,7 +16,7 @@ type Config struct {
 	sensu.PluginConfig
 	Cert       string
 	ServerName string
-	Influx	   bool
+	Influx     bool
 }
 
 var (
@@ -28,8 +28,8 @@ var (
 		},
 	}
 
-	options = []*sensu.PluginConfigOption{
-		{
+	options = []sensu.ConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      "cert",
 			Env:       "CHECK_CERT",
 			Argument:  "cert",
@@ -37,7 +37,7 @@ var (
 			Usage:     "URL to certificate. Supports https, tcp, and file schemes",
 			Value:     &plugin.Cert,
 		},
-		{
+		&sensu.PluginConfigOption[string]{
 			Path:      "servername",
 			Env:       "CHECK_SERVER_NAME",
 			Argument:  "servername",
@@ -45,7 +45,7 @@ var (
 			Usage:     "optional TLS servername extension argument",
 			Value:     &plugin.ServerName,
 		},
-		{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "influx",
 			Env:       "INFLUX_FORMAT",
 			Argument:  "influx",
@@ -69,18 +69,18 @@ func main() {
 		useStdin = true
 	}
 
-	check := sensu.NewGoCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
+	check := sensu.NewCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
 	check.Execute()
 }
 
-func checkArgs(event *types.Event) (int, error) {
+func checkArgs(event *corev2.Event) (int, error) {
 	if plugin.Cert == "" {
-		return sensu.CheckStateWarning, fmt.Errorf("--cert is required. must be URL to certificate. ex: file:///var/run/app/site.crt, https://dev1.sensu.io:8443, tcp://127.0.0.1:443")
+		return sensu.CheckStateCritical, fmt.Errorf("--cert is required. must be URL to certificate. ex: file:///var/run/app/site.crt, https://dev1.sensu.io:8443, tcp://127.0.0.1:443")
 	}
 	return sensu.CheckStateOK, nil
 }
 
-func executeCheck(event *types.Event) (int, error) {
+func executeCheck(event *corev2.Event) (int, error) {
 	ctx := context.Background()
 	if plugin.Timeout > 0 {
 		var cancel context.CancelFunc
