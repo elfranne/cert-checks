@@ -28,8 +28,8 @@ var (
 		},
 	}
 
-	options = []*sensu.PluginConfigOption{
-		&sensu.PluginConfigOption{
+	options = []sensu.ConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      "cert",
 			Env:       "CHECK_CERT",
 			Argument:  "cert",
@@ -37,7 +37,7 @@ var (
 			Usage:     "URL to certificate. Supports https, tcp, and file schemes",
 			Value:     &plugin.Cert,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[string]{
 			Path:      "servername",
 			Env:       "CHECK_SERVER_NAME",
 			Argument:  "servername",
@@ -45,7 +45,7 @@ var (
 			Usage:     "optional TLS servername extension argument",
 			Value:     &plugin.ServerName,
 		},
-		&sensu.PluginConfigOption{
+		&sensu.PluginConfigOption[bool]{
 			Path:      "influx",
 			Env:       "INFLUX_FORMAT",
 			Argument:  "influx",
@@ -69,7 +69,7 @@ func main() {
 		useStdin = true
 	}
 
-	check := sensu.NewGoCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
+	check := sensu.NewCheck(&plugin.PluginConfig, options, checkArgs, executeCheck, useStdin)
 	check.Execute()
 }
 
