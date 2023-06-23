@@ -5,6 +5,7 @@
 # Check Certs
 
 ## Overview
+
 The [Sensu Cert Check][1] is a cross-platform [Sensu Metrics Check][2] that provides certificate metrics in prometheus or InlfuxDB format.
 
 ### Output Metrics
@@ -16,12 +17,11 @@ The [Sensu Cert Check][1] is a cross-platform [Sensu Metrics Check][2] that prov
 | cert_issued_days    | Number of days the certificate has been issued. |
 | cert_issued_seconds | Number of seconds the certificate has been issued. |
 
-
 ## Usage Examples
 
 ### Help Output
 
-```
+```noformat
 Inspects certificate data
 
 Usage:
@@ -40,7 +40,6 @@ Flags:
 
 Use "cert-checks [command] --help" for more information about a command.
 ```
-
 
 [1]: https://github.com/sensu/cert-check
 [2]: https://docs.sensu.io/sensu-go/latest/reference/checks/
