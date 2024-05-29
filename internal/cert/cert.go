@@ -21,6 +21,7 @@ type Metrics struct {
 	EvaluatedAt         time.Time
 	SecondsSinceIssued  int
 	SecondsUntilExpires int
+	CaName              string
 	Tags                map[string]string
 }
 
@@ -41,16 +42,16 @@ func (m Metrics) Output() string {
 	lines := []string{
 		"# HELP cert_days_left number of days until certificate expires. Expired certificates produce negative numbers.",
 		"# TYPE cert_days_left gauge",
-		fmt.Sprintf("cert_days_left%s %f %d", tags, float64(m.SecondsUntilExpires)/secondsToDays, epoch),
+		fmt.Sprintf("cert_days_left%s;ca=\"%s\" %f %d", tags, m.CaName, float64(m.SecondsUntilExpires)/secondsToDays, epoch),
 		"# HELP cert_seconds_left number of seconds until certificate expires. Expired certificates produce negative numbers.",
 		"# TYPE cert_seconds_left gauge",
-		fmt.Sprintf("cert_seconds_left%s %d %d", tags, m.SecondsUntilExpires, epoch),
+		fmt.Sprintf("cert_seconds_left%s;ca=\"%s\" %d %d", tags, m.CaName, m.SecondsUntilExpires, epoch),
 		"# HELP cert_issued_days total number of days since certificate was issued.",
 		"# TYPE cert_issued_days counter",
-		fmt.Sprintf("cert_issued_days%s %f %d", tags, float64(m.SecondsSinceIssued)/secondsToDays, epoch),
+		fmt.Sprintf("cert_issued_days%s;ca=\"%s\" %f %d", tags, m.CaName, float64(m.SecondsSinceIssued)/secondsToDays, epoch),
 		"# HELP cert_issued_seconds total number of seconds since the certificate was issued.",
 		"# TYPE cert_issued_seconds counter",
-		fmt.Sprintf("cert_issued_seconds%s %d %d", tags, m.SecondsSinceIssued, epoch),
+		fmt.Sprintf("cert_issued_seconds%s;ca=\"%s\" %d %d", tags, m.CaName, m.SecondsSinceIssued, epoch),
 	}
 	return strings.Join(lines, "\n")
 }
@@ -97,6 +98,7 @@ func CollectMetrics(ctx context.Context, path string, cfg Config) (Metrics, erro
 	metrics.EvaluatedAt = now
 	metrics.SecondsSinceIssued = int(now.Sub(cert.NotBefore).Seconds())
 	metrics.SecondsUntilExpires = int(cert.NotAfter.Sub(now).Seconds())
+	metrics.CaName = strings.Join(cert.Issuer.Organization, "")
 	return metrics, nil
 }
 
