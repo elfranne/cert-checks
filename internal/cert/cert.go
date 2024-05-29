@@ -18,10 +18,12 @@ import (
 const secondsToDays = float64(60 * 60 * 24)
 
 type Metrics struct {
-	EvaluatedAt         time.Time
-	SecondsSinceIssued  int
-	SecondsUntilExpires int
-	Tags                map[string]string
+	EvaluatedAt           time.Time
+	SecondsSinceIssued    int
+	SecondsUntilExpires   int
+	CaSecondsUntilExpires int
+	CaName                string
+	Tags                  map[string]string
 }
 
 func (m Metrics) Output() string {
@@ -51,6 +53,9 @@ func (m Metrics) Output() string {
 		"# HELP cert_issued_seconds total number of seconds since the certificate was issued.",
 		"# TYPE cert_issued_seconds counter",
 		fmt.Sprintf("cert_issued_seconds%s %d %d", tags, m.SecondsSinceIssued, epoch),
+		"# HELP ca_days_left, includes CA Name in tags",
+		"# TYPE ca_days_left gauge",
+		fmt.Sprintf("ca_days_left;ca=%s %f %d", m.CaName, float64(m.CaSecondsUntilExpires)/secondsToDays, epoch),
 	}
 	return strings.Join(lines, "\n")
 }
@@ -80,23 +85,27 @@ func CollectMetrics(ctx context.Context, path string, cfg Config) (Metrics, erro
 
 	if cfg.Influx {
 		//  InfluxDB does not support * and . in metrics
-		fixStar := strings.Replace(cert.Subject.CommonName, "*", "STAR", 1)
+		fixStar := strings.Replace(cert[0].Subject.CommonName, "*", "STAR", 1)
 		fixDot := strings.ReplaceAll(fixStar, ".", "_")
 		metrics.Tags = map[string]string{"subject": fixDot}
 	} else {
-		metrics.Tags = map[string]string{"subject": cert.Subject.CommonName}
+		metrics.Tags = map[string]string{"subject": cert[0].Subject.CommonName}
 	}
 
 	if cfg.ServerName != "" {
-		if err := cert.VerifyHostname(cfg.ServerName); err != nil {
+		if err := cert[0].VerifyHostname(cfg.ServerName); err != nil {
 			return metrics, fmt.Errorf("error supplied servername not valid for this certificate: %v", err)
 		}
 		metrics.Tags["servername"] = cfg.ServerName
 	}
 	now := cfg.Now()
 	metrics.EvaluatedAt = now
-	metrics.SecondsSinceIssued = int(now.Sub(cert.NotBefore).Seconds())
-	metrics.SecondsUntilExpires = int(cert.NotAfter.Sub(now).Seconds())
+	metrics.SecondsSinceIssued = int(now.Sub(cert[0].NotBefore).Seconds())
+	metrics.SecondsUntilExpires = int(cert[0].NotAfter.Sub(now).Seconds())
+	metrics.CaSecondsUntilExpires = int(cert[len(cert)-1].NotAfter.Sub(now).Seconds())
+	// metrics.CaName = strings.ReplaceAll(strings.Join(cert[0].Issuer.Organization, ""), " ", "_")
+	metrics.CaName = fmt.Sprintf("\"%s\"", strings.Join(cert[0].Issuer.Organization, ""))
+
 	return metrics, nil
 }
 
@@ -132,10 +141,10 @@ func parse(cert, servername string) (certificateLoader, error) {
 	}
 }
 
-type certificateLoader func(context.Context) (*x509.Certificate, error)
+type certificateLoader func(context.Context) ([]*x509.Certificate, error)
 
 func fromFile(path string) certificateLoader {
-	return func(ctx context.Context) (*x509.Certificate, error) {
+	return func(ctx context.Context) ([]*x509.Certificate, error) {
 		f, err := os.Open(path)
 		if err != nil {
 			return nil, fmt.Errorf("error opening certificate file: %v", err)
@@ -153,12 +162,12 @@ func fromFile(path string) certificateLoader {
 		if err != nil {
 			return nil, fmt.Errorf("error parsing x509 certificate %v", err)
 		}
-		return result, nil
+		return append(make([]*x509.Certificate, 3), result), nil
 	}
 }
 
 func fromTLSHandshake(target *url.URL, servername string) certificateLoader {
-	return func(ctx context.Context) (*x509.Certificate, error) {
+	return func(ctx context.Context) ([]*x509.Certificate, error) {
 		dialer := &net.Dialer{
 			Deadline: time.Now().Add(time.Second * 10),
 		}
@@ -177,6 +186,6 @@ func fromTLSHandshake(target *url.URL, servername string) certificateLoader {
 			return nil, fmt.Errorf("error completing TLS handshake %v", err)
 		}
 		state := conn.ConnectionState()
-		return state.PeerCertificates[0], nil
+		return state.PeerCertificates, nil
 	}
 }
