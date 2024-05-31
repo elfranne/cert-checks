@@ -21,7 +21,6 @@ type Metrics struct {
 	EvaluatedAt         time.Time
 	SecondsSinceIssued  int
 	SecondsUntilExpires int
-	CaName              string
 	Tags                map[string]string
 }
 
@@ -31,27 +30,27 @@ func (m Metrics) Output() string {
 	if len(m.Tags) > 0 {
 		buf := bytes.Buffer{}
 		separator := ""
-		for _, value := range m.Tags {
-			fmt.Fprintf(&buf, "%s", value)
+		for tag, value := range m.Tags {
+			fmt.Fprintf(&buf, "%s%s=\"%s\"", separator, tag, value)
 			if separator == "" {
 				separator = ", "
 			}
 		}
-		tags = fmt.Sprintf(".%s", buf.String())
+		tags = fmt.Sprintf("{%s}", buf.String())
 	}
 	lines := []string{
 		"# HELP cert_days_left number of days until certificate expires. Expired certificates produce negative numbers.",
 		"# TYPE cert_days_left gauge",
-		fmt.Sprintf("cert_days_left%s;ca=\"%s\" %f %d", tags, m.CaName, float64(m.SecondsUntilExpires)/secondsToDays, epoch),
+		fmt.Sprintf("cert_days_left%s %f %d", tags, float64(m.SecondsUntilExpires)/secondsToDays, epoch),
 		"# HELP cert_seconds_left number of seconds until certificate expires. Expired certificates produce negative numbers.",
 		"# TYPE cert_seconds_left gauge",
-		fmt.Sprintf("cert_seconds_left%s;ca=\"%s\" %d %d", tags, m.CaName, m.SecondsUntilExpires, epoch),
+		fmt.Sprintf("cert_seconds_left%s %d %d", tags, m.SecondsUntilExpires, epoch),
 		"# HELP cert_issued_days total number of days since certificate was issued.",
 		"# TYPE cert_issued_days counter",
-		fmt.Sprintf("cert_issued_days%s;ca=\"%s\" %f %d", tags, m.CaName, float64(m.SecondsSinceIssued)/secondsToDays, epoch),
+		fmt.Sprintf("cert_issued_days%s %f %d", tags, float64(m.SecondsSinceIssued)/secondsToDays, epoch),
 		"# HELP cert_issued_seconds total number of seconds since the certificate was issued.",
 		"# TYPE cert_issued_seconds counter",
-		fmt.Sprintf("cert_issued_seconds%s;ca=\"%s\" %d %d", tags, m.CaName, m.SecondsSinceIssued, epoch),
+		fmt.Sprintf("cert_issued_seconds%s %d %d", tags, m.SecondsSinceIssued, epoch),
 	}
 	return strings.Join(lines, "\n")
 }
@@ -61,7 +60,6 @@ type Config struct {
 	// Now provider defaults to time.Now() when not provided
 	Now        func() time.Time
 	ServerName string
-	Influx     bool
 }
 
 // CollectMetrics Loads a certificate at a particular location and
@@ -78,15 +76,7 @@ func CollectMetrics(ctx context.Context, path string, cfg Config) (Metrics, erro
 	if err != nil {
 		return metrics, err
 	}
-
-	if cfg.Influx {
-		//  InfluxDB does not support * and . in metrics
-		fixStar := strings.Replace(cert.Subject.CommonName, "*", "STAR", 1)
-		fixDot := strings.ReplaceAll(fixStar, ".", "_")
-		metrics.Tags = map[string]string{"subject": fixDot}
-	} else {
-		metrics.Tags = map[string]string{"subject": cert.Subject.CommonName}
-	}
+	metrics.Tags = map[string]string{"subject": cert.Subject.CommonName, "ca": strings.Join(cert.Issuer.Organization, "")}
 
 	if cfg.ServerName != "" {
 		if err := cert.VerifyHostname(cfg.ServerName); err != nil {
@@ -98,7 +88,6 @@ func CollectMetrics(ctx context.Context, path string, cfg Config) (Metrics, erro
 	metrics.EvaluatedAt = now
 	metrics.SecondsSinceIssued = int(now.Sub(cert.NotBefore).Seconds())
 	metrics.SecondsUntilExpires = int(cert.NotAfter.Sub(now).Seconds())
-	metrics.CaName = strings.Join(cert.Issuer.Organization, "")
 	return metrics, nil
 }
 
