@@ -63,8 +63,10 @@ func TestCollectMetricsFromFile(t *testing.T) {
 				SecondsSinceIssued:  0,
 				SecondsUntilExpires: int(duration.Seconds()),
 				Tags: map[string]string{
-					"subject": "imposter.sensu.io",
-					"ca":      "Sumo Logic Inc",
+					"subject":  "imposter.sensu.io",
+					"ca":       "Sumo Logic Inc",
+					"SAN":      "imposter.sensu.io",
+					"endpoint": "file://" + testCertPath,
 				},
 			},
 		}, {
@@ -87,6 +89,8 @@ func TestCollectMetricsFromFile(t *testing.T) {
 					"subject":    "imposter.sensu.io",
 					"servername": "imposter.sensu.io",
 					"ca":         "Sumo Logic Inc",
+					"SAN":        "imposter.sensu.io",
+					"endpoint":   "file://" + testCertPath,
 				},
 			},
 		}, {
@@ -108,8 +112,10 @@ func TestCollectMetricsFromFile(t *testing.T) {
 				SecondsSinceIssued:  int((duration + time.Hour).Seconds()),
 				SecondsUntilExpires: int((-1 * time.Hour).Seconds()),
 				Tags: map[string]string{
-					"subject": "imposter.sensu.io",
-					"ca":      "Sumo Logic Inc",
+					"subject":  "imposter.sensu.io",
+					"ca":       "Sumo Logic Inc",
+					"SAN":      "imposter.sensu.io",
+					"endpoint": "file://" + testCertPath,
 				},
 			},
 		},
@@ -223,8 +229,10 @@ func TestCollectMetricsFromTLS(t *testing.T) {
 				SecondsSinceIssued:  0,
 				SecondsUntilExpires: int(duration.Seconds()),
 				Tags: map[string]string{
-					"subject": "imposter.sensu.io",
-					"ca":      "Sumo Logic Inc",
+					"subject":  "imposter.sensu.io",
+					"ca":       "Sumo Logic Inc",
+					"SAN":      "imposter.sensu.io",
+					"endpoint": "https://" + ln.Addr().String(),
 				},
 			},
 		}, {
@@ -237,8 +245,10 @@ func TestCollectMetricsFromTLS(t *testing.T) {
 				SecondsSinceIssued:  int((duration + time.Hour).Seconds()),
 				SecondsUntilExpires: int(-1 * time.Hour.Seconds()),
 				Tags: map[string]string{
-					"subject": "imposter.sensu.io",
-					"ca":      "Sumo Logic Inc",
+					"subject":  "imposter.sensu.io",
+					"ca":       "Sumo Logic Inc",
+					"SAN":      "imposter.sensu.io",
+					"endpoint": "https://" + ln.Addr().String(),
 				},
 			},
 		}, {
@@ -261,6 +271,8 @@ func TestCollectMetricsFromTLS(t *testing.T) {
 					"subject":    "imposter.sensu.io",
 					"servername": "imposter.sensu.io",
 					"ca":         "Sumo Logic Inc",
+					"SAN":        "imposter.sensu.io",
+					"endpoint":   "tcp://" + ln.Addr().String(),
 				},
 			},
 		}, {
@@ -285,7 +297,9 @@ func TestCollectMetricsFromTLS(t *testing.T) {
 				Tags: map[string]string{
 					"servername": "local.test",
 					"subject":    "local.test",
-					"ca":      "Sumo Logic Inc",
+					"ca":         "Sumo Logic Inc",
+					"SAN":        "local.test",
+					"endpoint":   "tcp://" + ln.Addr().String(),
 				},
 			},
 		}, {
