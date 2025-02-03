@@ -76,7 +76,12 @@ func CollectMetrics(ctx context.Context, path string, cfg Config) (Metrics, erro
 	if err != nil {
 		return metrics, err
 	}
-	metrics.Tags = map[string]string{"subject": cert.Subject.CommonName, "ca": strings.Join(cert.Issuer.Organization, "")}
+	metrics.Tags = map[string]string{"subject": cert.Subject.CommonName, "ca": strings.Join(cert.Issuer.Organization, ""), "endpoint": path}
+	if len(cert.DNSNames) > 0 {
+		metrics.Tags["SAN"] = strings.Join(cert.DNSNames, ",")
+	}else{
+		metrics.Tags["SAN"] = "None"
+	}
 
 	if cfg.ServerName != "" {
 		if err := cert.VerifyHostname(cfg.ServerName); err != nil {
